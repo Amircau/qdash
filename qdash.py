@@ -33,6 +33,7 @@ class FinancialData:
     def _fetch_data(self, ticker: str, start_date: datetime, end_date: datetime) -> pl.DataFrame:
         """Fetch and clean data from yfinance"""
         try:
+            # Fetch data using yfinance
             data = yf.download(ticker, start=start_date, end=end_date)
             if data.empty:
                 raise ValueError(f"No data found for {ticker}")
@@ -56,7 +57,7 @@ class FinancialData:
     
             # Ensure 'Date' is parsed as datetime
             pl_df = pl_df.with_columns(
-                pl.col('Date').str.strptime(pl.Datetime, fmt="%Y-%m-%d").alias('Date')
+                pl.col('Date').str.strptime(pl.Datetime, format="%Y-%m-%d").alias('Date')
             )
             return pl_df
         except Exception as e:
