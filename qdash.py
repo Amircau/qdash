@@ -61,18 +61,22 @@ class FinancialData:
             # Convert to Polars DataFrame
             pl_df = pl.DataFrame(data)
     
-            # Handle unexpected column formats
-            if "('Date', '')" in pl_df.columns:
-                pl_df = pl_df.rename({'(\'Date\', \'\')': 'Date'})
+            # Debugging: Log column types
+            debug_log("Column types before processing", pl_df.dtypes)
     
-            # Ensure 'Date' is parsed as datetime
-            pl_df = pl_df.with_columns(
-                pl.col('Date').str.strptime(pl.Datetime, format="%Y-%m-%d").alias('Date')
-            )
+            # Ensure 'Date' is parsed as datetime if not already
+            if pl_df['Date'].dtype != pl.Datetime:
+                pl_df = pl_df.with_columns(
+                    pl.col('Date').str.strptime(pl.Datetime, format="%Y-%m-%d").alias('Date')
+                )
+            
+            # Debugging: Log column types after conversion
+            debug_log("Column types after processing", pl_df.dtypes)
             return pl_df
         except Exception as e:
             debug_log("Error fetching data for ticker", e)
             raise
+
 
 
 
