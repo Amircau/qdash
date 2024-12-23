@@ -72,24 +72,27 @@ def add_extreme_markers(df):
 
 def compute_rolling_return(df, weeks=4):
     """
-    Creates a 4W_RETURN column = (close[t]/close[t-20] - 1).
-    Also sets 'ROLLING_RETURN_4W' as a bar chart metric if you'd like to keep the older approach
-    of 'rolling average of daily returns' for visual reference.
+    Creates a 4W_RETURN column representing the total return over ~20 trading days (4 weeks).
+    Also computes 'ROLLING_RETURN_4W' as the rolling average of daily returns.
     """
     # 1) 4W_RETURN: total return over ~20 trading days
+    shift_days = weeks * 5  # ~20 trading days for 4 weeks
     df['4W_RETURN'] = np.nan
-    shift_days = weeks * 5  # typically 4 weeks ~ 20 days
-    for i in range(shift_days, len(df)):
-        now_close = df['close'].iloc[i]
-        prev_close = df['close'].iloc[i - shift_days]
-        if pd.notna(now_close) and pd.notna(prev_close) and prev_close != 0:
-            df.at[df.index[i], '4W_RETURN'] = (now_close / prev_close) - 1
 
-    # 2) "ROLLING_RETURN_4W": a rolling average of daily returns, as originally coded
+    # Use vectorized calculation instead of a loop
+    prev_close = df['close'].shift(shift_days)
+    df['4W_RETURN'] = np.where(
+        (pd.notna(df['close']) & pd.notna(prev_close) & (prev_close != 0)),
+        (df['close'] / prev_close) - 1,
+        np.nan
+    )
+
+    # 2) "ROLLING_RETURN_4W": a rolling average of daily returns
     df['daily_return'] = df['close'].pct_change()
     df['ROLLING_RETURN_4W'] = df['daily_return'].rolling(weeks * 5).mean()
 
     return df
+
 
 def compute_yearly_min_max(df):
     """
