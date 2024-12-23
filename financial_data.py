@@ -1,13 +1,3 @@
-# Directory Structure
-# ├── my-financial-dashboard/
-# │   ├── app.py                  # Main Streamlit application
-# │   ├── financial_data.py       # Data fetching and manipulation logic
-# │   ├── dashboard_visualizer.py # Visualization components
-# │   ├── config.py              # Configuration and constants
-# │   ├── requirements.txt        # Python dependencies
-# │   ├── README.md               # Project documentation
-# │   ├── .gitignore              # Ignored files for Git
-
 # financial_data.py
 import pandas as pd
 import numpy as np
@@ -52,23 +42,49 @@ class FinancialData:
                 'Low': 'low',
                 'Volume': 'volume'
             }
-            return df.rename(columns=column_mapping)
+            df = df.rename(columns=column_mapping)
+            df.index = pd.to_datetime(df.index)
+            return df
         except Exception as e:
             debug_log("Error fetching data", e)
             raise
 
     def add_momentum_indicators(self) -> None:
-        """Add momentum indicators to the dataframe"""
-        for period in Config.MOVING_AVERAGE_PERIODS:
-            self.df[f'MA{period}'] = self.df['close'].rolling(window=period).mean()
-        debug_log("Added Moving Averages", self.df.head())
+        """Add momentum indicators to the dataframe."""
+        try:
+            for period in Config.MOVING_AVERAGE_PERIODS:
+                self.df[f'MA{period}'] = self.df['close'].rolling(window=period).mean()
+            debug_log("Added Moving Averages", self.df[[f'MA{p}' for p in Config.MOVING_AVERAGE_PERIODS]].head())
+
+            for period in Config.ROC_PERIODS:
+                self.df[f'ROC{period}'] = (
+                    (self.df['close'] - self.df['close'].shift(period)) /
+                    self.df['close'].shift(period)
+                ) * 100
+            debug_log("Added Rate of Change (ROC)", self.df[[f'ROC{p}' for p in Config.ROC_PERIODS]].head())
+
+            roc_cols = [f'ROC{period}' for period in Config.ROC_PERIODS]
+            if all(col in self.df.columns for col in roc_cols):
+                weights = np.array([0.4, 0.3, 0.2, 0.1])
+                self.df['MOMO_SCORE'] = self.df[roc_cols].dot(weights)
+                debug_log("Added MOMO_SCORE", self.df[['MOMO_SCORE']].head())
+            else:
+                raise KeyError("Some ROC columns are missing. MOMO_SCORE cannot be calculated.")
+
+        except Exception as e:
+            debug_log("Error in add_momentum_indicators", e)
+            raise
 
     def add_bollinger_bands(self, window: int = 20, num_std: int = 2) -> None:
         """
         Calculate Bollinger Bands using a rolling window and specified # of standard deviations.
         """
-        self.df['BB_MA'] = self.df['close'].rolling(window=window).mean()
-        self.df['BB_STD'] = self.df['close'].rolling(window=window).std()
-        self.df['BB_Upper'] = self.df['BB_MA'] + (num_std * self.df['BB_STD'])
-        self.df['BB_Lower'] = self.df['BB_MA'] - (num_std * self.df['BB_STD'])
-        debug_log("Added Bollinger Bands", self.df.head())
+        try:
+            self.df['BB_MA'] = self.df['close'].rolling(window=window).mean()
+            self.df['BB_STD'] = self.df['close'].rolling(window=window).std()
+            self.df['BB_Upper'] = self.df['BB_MA'] + (num_std * self.df['BB_STD'])
+            self.df['BB_Lower'] = self.df['BB_MA'] - (num_std * self.df['BB_STD'])
+            debug_log("Added Bollinger Bands", self.df[['BB_MA', 'BB_Upper', 'BB_Lower']].head())
+        except Exception as e:
+            debug_log("Error in add_bollinger_bands", e)
+            raise
