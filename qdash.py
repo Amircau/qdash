@@ -138,18 +138,18 @@ class DashboardVisualizer:
         return fig
 
     def create_price_ma_difference_chart(self) -> go.Figure:
-    if 'MA21' in self.primary.df.columns:
-        self.primary.df['Price_MA_Diff'] = self.primary.df['close'] - self.primary.df['MA21']
-    else:
-        raise ValueError("Moving Average (MA21) is not calculated. Ensure indicators are added before plotting.")
-
-    fig = px.line(
-        self.primary.df,
-        x=self.primary.df.index,
-        y='Price_MA_Diff',
-        title="Price - MA Difference"
-    )
-    return fig
+        if 'MA21' in self.primary.df.columns:
+            self.primary.df['Price_MA_Diff'] = self.primary.df['close'] - self.primary.df['MA21']
+        else:
+            raise ValueError("Moving Average (MA21) is not calculated. Ensure indicators are added before plotting.")
+    
+        fig = px.line(
+            self.primary.df,
+            x=self.primary.df.index,
+            y='Price_MA_Diff',
+            title="Price - MA Difference"
+        )
+        return fig
 
     def create_seasonality_chart(self) -> go.Figure:
         seasonality = self.primary.compute_seasonality()
