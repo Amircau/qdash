@@ -1,7 +1,7 @@
 # dashboard_visualizer.py
 import plotly.graph_objects as go
 import plotly.express as px
-from financial_data import FinancialData, debug_log
+from financial_data import FinancialData, Config, debug_log
 
 class DashboardVisualizer:
     """Class to handle all visualization logic"""
@@ -35,6 +35,7 @@ class DashboardVisualizer:
         return fig
 
     def create_momentum_chart(self) -> go.Figure:
+        """Create a Momentum Chart including Moving Averages."""
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=self.primary.df.index,
@@ -65,6 +66,7 @@ class DashboardVisualizer:
         return fig
 
     def create_price_ma_difference_chart(self) -> go.Figure:
+        """Create a chart showing the difference between Price and Moving Average."""
         self.primary.df['Price_MA_Diff'] = self.primary.df['close'] - self.primary.df['MA21']
         fig = px.line(
             self.primary.df,
@@ -76,6 +78,7 @@ class DashboardVisualizer:
         return fig
 
     def create_yearly_min_max_chart(self) -> go.Figure:
+        """Create a chart showing yearly minimum and maximum prices."""
         yearly = self.primary.df.groupby(self.primary.df.index.year)['close'].agg(['min', 'max']).reset_index()
         fig = go.Figure()
         fig.add_trace(go.Bar(
@@ -95,4 +98,19 @@ class DashboardVisualizer:
             barmode='group'
         )
         debug_log("Created Yearly Min-Max Chart")
+        return fig
+
+    def create_seasonality_chart(self) -> go.Figure:
+        """Create a seasonality chart showing 4-week returns grouped by week of the year."""
+        self.primary.df['week_of_year'] = self.primary.df.index.isocalendar().week
+        self.primary.df['week_of_year'] = self.primary.df['week_of_year'].apply(lambda x: 52 if x > 52 else x)
+        seasonality = self.primary.df.groupby('week_of_year')['4W_RETURN'].mean().reset_index(name='avg_4w_return')
+        fig = px.bar(
+            seasonality,
+            x='week_of_year',
+            y='avg_4w_return',
+            title="Seasonality (4W Return)"
+        )
+        fig.update_yaxes(tickformat=".2%")
+        debug_log("Created Seasonality Chart")
         return fig
