@@ -6,4 +6,3 @@ plotly
 typing
 scipy
 dataclasses
-polars
