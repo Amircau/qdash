@@ -105,9 +105,14 @@ def compute_yearly_min_max(df):
 
 def create_price_ma_difference(df):
     """
-    Compute difference between Price and 21MA.
+    Compute the difference between the 'close' price and the 21-day moving average (MA21).
     """
-    df['Price_MA_Diff'] = df['close'] - df['MA21']
+    # Ensure both 'close' and 'MA21' exist in DataFrame
+    if 'close' in df.columns and 'MA21' in df.columns:
+        df['Price_MA_Diff'] = df['close'] - df['MA21']
+    else:
+        raise KeyError("Missing required columns 'close' or 'MA21' in the DataFrame.")
+
     return df
 
 def compute_stats(df):
