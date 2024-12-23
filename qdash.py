@@ -1,7 +1,6 @@
-import pandas as pd  # Add this import
+import pandas as pd
 import streamlit as st
-from datetime import datetime , Config
-from financial_data import FinancialData
+from financial_data import FinancialData, Config  # Import Config correctly
 from dashboard_visualizer import DashboardVisualizer, debug_log
 
 def main():
@@ -11,6 +10,7 @@ def main():
     with st.sidebar:
         st.header("Configuration")
         primary_ticker = st.text_input("Primary Ticker:", value="AAPL")
+        st.write("DEBUG: Config.DEFAULT_START_DATE", Config.DEFAULT_START_DATE)  # Debugging line
         start_date = st.date_input("Start Date", value=pd.to_datetime(Config.DEFAULT_START_DATE))
         end_date = st.date_input("End Date", value=pd.to_datetime("today"))
 
