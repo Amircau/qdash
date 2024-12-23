@@ -24,29 +24,29 @@ class Config:
 
 # Requirements remain the same - no changes needed to requirements.txt
 
-    class FinancialData:
-        """Class to handle all financial data operations"""
-    
-        def __init__(self, ticker: str, start_date: datetime, end_date: datetime):
-            self.ticker = ticker
-            self.df = self._fetch_data(ticker, start_date, end_date)
-    
-        @staticmethod
-        @st.cache_data  
-        def _fetch_data(ticker: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
-            """Fetch and clean data from yfinance"""
-            df = yf.download(ticker, start=start_date, end=end_date)
-            if df.empty:
-                raise ValueError(f"No data found for {ticker}")
-    
-            column_mapping = {
-                'Close': 'close',
-                'Open': 'open',
-                'High': 'high',
-                'Low': 'low',
-                'Volume': 'volume'
-            }
-            return df.rename(columns=column_mapping)
+class FinancialData:
+    """Class to handle all financial data operations"""
+
+    def __init__(self, ticker: str, start_date: datetime, end_date: datetime):
+        self.ticker = ticker
+        self.df = self._fetch_data(ticker, start_date, end_date)
+
+    @staticmethod
+    @st.cache_data  
+    def _fetch_data(ticker: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
+        """Fetch and clean data from yfinance"""
+        df = yf.download(ticker, start=start_date, end=end_date)
+        if df.empty:
+            raise ValueError(f"No data found for {ticker}")
+
+        column_mapping = {
+            'Close': 'close',
+            'Open': 'open',
+            'High': 'high',
+            'Low': 'low',
+            'Volume': 'volume'
+        }
+        return df.rename(columns=column_mapping)
 
     def add_momentum_indicators(self) -> None:
         """Add momentum indicators to the dataframe"""
