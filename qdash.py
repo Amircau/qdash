@@ -30,7 +30,7 @@ class FinancialData:
         self.df = self._fetch_data(ticker, start_date, end_date)
 
     @st.cache_data  # Add caching to prevent repeated data fetching
-    def _fetch_data(self, ticker: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
+    def _fetch_data(_self, ticker: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
         """Fetch and clean data from yfinance"""
         df = yf.download(ticker, start=start_date, end=end_date)
         if df.empty:
