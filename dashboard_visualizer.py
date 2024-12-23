@@ -71,15 +71,24 @@ class DashboardVisualizer:
 
     def create_price_ma_difference_chart(self) -> go.Figure:
         """Create a chart showing the difference between Price and Moving Average."""
-        self.primary.df['Price_MA_Diff'] = self.primary.df['close'] - self.primary.df['MA21']
-        fig = px.line(
-            self.primary.df,
-            x=self.primary.df.index,
-            y='Price_MA_Diff',
-            title="Price - MA Difference"
-        )
-        debug_log("Created Price - MA Difference Chart")
-        return fig
+        try:
+            if 'close' in self.primary.df.columns and 'MA21' in self.primary.df.columns:
+                self.primary.df['Price_MA_Diff'] = self.primary.df['close'] - self.primary.df['MA21']
+            else:
+                raise KeyError("'close' or 'MA21' column is missing in the DataFrame.")
+            
+            fig = px.line(
+                self.primary.df,
+                x=self.primary.df.index,
+                y='Price_MA_Diff',
+                title="Price - MA Difference"
+            )
+            debug_log("Created Price - MA Difference Chart")
+            return fig
+        except Exception as e:
+            debug_log("Error in create_price_ma_difference_chart", e)
+            raise
+
 
     def create_yearly_min_max_chart(self) -> go.Figure:
         """Create a chart showing yearly minimum and maximum prices."""
