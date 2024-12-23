@@ -44,7 +44,7 @@ class FinancialData:
             if data.empty:
                 raise ValueError(f"No data found for {ticker}")
     
-            # Reset index to include the date
+            # Reset index to ensure 'Date' becomes a column
             data.reset_index(inplace=True)
     
             # Rename columns to match the expected format
@@ -58,26 +58,28 @@ class FinancialData:
             }
             data.rename(columns=column_mapping, inplace=True)
     
+            # Debug: Ensure 'Date' exists in Pandas DataFrame
+            if 'Date' not in data.columns:
+                raise KeyError("'Date' column is missing after reset_index.")
+    
             # Convert to Polars DataFrame
             pl_df = pl.DataFrame(data)
     
-            # Debugging: Log column types
-            debug_log("Column types before processing", pl_df.dtypes)
+            # Debugging: Log column names in Polars DataFrame
+            debug_log("Polars DataFrame columns", pl_df.columns)
     
             # Ensure 'Date' is parsed as datetime if not already
-            if pl_df['Date'].dtype != pl.Datetime:
+            if 'Date' in pl_df.columns and pl_df['Date'].dtype != pl.Datetime:
                 pl_df = pl_df.with_columns(
                     pl.col('Date').str.strptime(pl.Datetime, format="%Y-%m-%d").alias('Date')
                 )
-            
-            # Debugging: Log column types after conversion
-            debug_log("Column types after processing", pl_df.dtypes)
+    
+            # Debugging: Log final Polars DataFrame
+            debug_log("Final Polars DataFrame", pl_df.head())
             return pl_df
         except Exception as e:
             debug_log("Error fetching data for ticker", e)
             raise
-
-
 
 
     def add_momentum_indicators(self) -> None:
