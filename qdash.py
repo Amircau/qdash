@@ -110,7 +110,6 @@ def create_price_ma_difference(df):
     # Ensure both 'close' and 'MA21' exist in DataFrame
     if 'close' in df.columns and 'MA21' in df.columns:
         df['Price_MA_Diff'] = df['close'] - df['MA21']
-        df['Price_MA_Diff'] = df['Price_MA_Diff'].fillna(0)
     else:
         raise KeyError("Missing required columns 'close' or 'MA21' in the DataFrame.")
 
@@ -199,6 +198,7 @@ if st.button("Compare"):
     df_primary = add_extreme_markers(df_primary)
     df_primary = compute_rolling_return(df_primary, weeks=4)
     df_primary = create_price_ma_difference(df_primary)
+    df_primary['Price_MA_Diff'] = df_primary['Price_MA_Diff'].fillna(0)
     stats_primary = compute_stats(df_primary)
 
     # Build yearly min/max for the primary
