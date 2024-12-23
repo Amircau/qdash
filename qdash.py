@@ -1,3 +1,13 @@
+# requirements.txt file content
+"""
+streamlit==1.31.0
+pandas==2.2.0
+numpy==1.26.3
+yfinance==0.2.35
+plotly==5.18.0
+scipy==1.12.0
+"""
+
 # app.py
 import streamlit as st
 import pandas as pd
@@ -30,7 +40,7 @@ class FinancialData:
         self.df = self._fetch_data(ticker, start_date, end_date)
 
     @st.cache_data  # Add caching to prevent repeated data fetching
-    def _fetch_data(_self, ticker: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
+    def _fetch_data(self, ticker: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
         """Fetch and clean data from yfinance"""
         df = yf.download(ticker, start=start_date, end=end_date)
         if df.empty:
@@ -94,33 +104,41 @@ class DashboardVisualizer:
         self.primary = primary_data
         self.secondary = secondary_data
 
-    @st.cache_data  # Add caching for charts
     def create_momentum_chart(self) -> go.Figure:
+        df = self.primary.df  # Get the data outside the cached function
+        return self._create_momentum_chart_cached(
+            df=df,
+            ma_periods=Config.MOVING_AVERAGE_PERIODS
+        )
+
+    @staticmethod
+    @st.cache_data
+    def _create_momentum_chart_cached(df: pd.DataFrame, ma_periods: list) -> go.Figure:
         fig = go.Figure()
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['close'],
+            x=df.index,
+            y=df['close'],
             name='Price',
             line=dict(color='blue')
         ))
-        for period in Config.MOVING_AVERAGE_PERIODS:
+        for period in ma_periods:
             fig.add_trace(go.Scatter(
-                x=self.primary.df.index,
-                y=self.primary.df[f'MA{period}'],
+                x=df.index,
+                y=df[f'MA{period}'],
                 name=f'{period}MA',
                 line=dict(dash='dot')
             ))
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['MOMO_SCORE'],
+            x=df.index,
+            y=df['MOMO_SCORE'],
             name='Momentum Score',
             yaxis='y2',
             line=dict(color='red')
         ))
-        for period in Config.MOVING_AVERAGE_PERIODS:
+        for period in ma_periods:
             fig.add_trace(go.Scatter(
-                x=self.primary.df.index,
-                y=self.primary.df[f'MOMO_MA{period}'],
+                x=df.index,
+                y=df[f'MOMO_MA{period}'],
                 name=f'MOMO MA{period}',
                 line=dict(dash='dot', color='green')
             ))
@@ -131,20 +149,28 @@ class DashboardVisualizer:
         )
         return fig
 
-    @st.cache_data
     def create_price_ma_difference_chart(self) -> go.Figure:
-        self.primary.df['Price_MA_Diff'] = self.primary.df['close'] - self.primary.df['MA21']
-        fig = px.line(
-            self.primary.df,
-            x=self.primary.df.index,
+        df = self.primary.df.copy()
+        df['Price_MA_Diff'] = df['close'] - df['MA21']
+        return self._create_price_ma_difference_chart_cached(df=df)
+
+    @staticmethod
+    @st.cache_data
+    def _create_price_ma_difference_chart_cached(df: pd.DataFrame) -> go.Figure:
+        return px.line(
+            df,
+            x=df.index,
             y='Price_MA_Diff',
             title="Price - MA Difference"
         )
-        return fig
 
-    @st.cache_data
     def create_seasonality_chart(self) -> go.Figure:
         seasonality = self.primary.compute_seasonality()
+        return self._create_seasonality_chart_cached(seasonality=seasonality)
+
+    @staticmethod
+    @st.cache_data
+    def _create_seasonality_chart_cached(seasonality: pd.DataFrame) -> go.Figure:
         fig = px.bar(
             seasonality,
             x='week_of_year',
@@ -154,9 +180,13 @@ class DashboardVisualizer:
         fig.update_yaxes(tickformat=".2%")
         return fig
 
-    @st.cache_data
     def create_yearly_min_max_chart(self) -> go.Figure:
         yearly = self.primary.compute_yearly_min_max()
+        return self._create_yearly_min_max_chart_cached(yearly=yearly)
+
+    @staticmethod
+    @st.cache_data
+    def _create_yearly_min_max_chart_cached(yearly: pd.DataFrame) -> go.Figure:
         fig = go.Figure()
         fig.add_trace(go.Bar(
             x=yearly['Year'],
@@ -176,7 +206,6 @@ class DashboardVisualizer:
         )
         return fig
 
-    @st.cache_data
     def create_comparison_charts(self) -> Tuple[Optional[go.Figure], Optional[go.Figure]]:
         if not self.secondary:
             return None, None
@@ -187,39 +216,47 @@ class DashboardVisualizer:
         self.secondary.df = self.secondary.df.reindex(self.primary.df.index, method='ffill')
         df_perf['Secondary'] = self.secondary.df['close'] / self.secondary.df['close'].iloc[0] - 1
         df_perf['Gap'] = df_perf['Primary'] - df_perf['Secondary']
+        
+        ratio = self.primary.df['close'] / self.secondary.df['close']
+        
+        return self._create_comparison_charts_cached(df_perf=df_perf, ratio=ratio)
 
+    @staticmethod
+    @st.cache_data
+    def _create_comparison_charts_cached(df_perf: pd.DataFrame, ratio: pd.Series) -> Tuple[go.Figure, go.Figure]:
         fig_gap = px.line(df_perf, x=df_perf.index, y='Gap', title="Performance Gap")
-        fig_ratio = px.line(
-            x=self.primary.df.index,
-            y=self.primary.df['close'] / self.secondary.df['close'],
-            title="Ratio Spread"
-        )
+        fig_ratio = px.line(x=ratio.index, y=ratio, title="Ratio Spread")
         return fig_gap, fig_ratio
 
-    @st.cache_data
     def create_bollinger_chart(self) -> go.Figure:
+        df = self.primary.df
+        return self._create_bollinger_chart_cached(df=df)
+
+    @staticmethod
+    @st.cache_data
+    def _create_bollinger_chart_cached(df: pd.DataFrame) -> go.Figure:
         fig = go.Figure()
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['close'],
+            x=df.index,
+            y=df['close'],
             name='Price',
             line=dict(color='blue')
         ))
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['BB_Upper'],
+            x=df.index,
+            y=df['BB_Upper'],
             name='Bollinger Upper',
             line=dict(color='red', dash='dot')
         ))
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['BB_MA'],
+            x=df.index,
+            y=df['BB_MA'],
             name='Bollinger MA',
             line=dict(color='orange', dash='dash')
         ))
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['BB_Lower'],
+            x=df.index,
+            y=df['BB_Lower'],
             name='Bollinger Lower',
             line=dict(color='green', dash='dot')
         ))
