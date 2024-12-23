@@ -51,11 +51,14 @@ class FinancialData:
             }
             data.rename(columns=column_mapping, inplace=True)
     
-            # Ensure 'Date' is parsed as datetime
-            data['Date'] = pl.to_datetime(data['Date'])
-    
             # Convert to Polars DataFrame
-            return pl.DataFrame(data)
+            pl_df = pl.DataFrame(data)
+    
+            # Ensure 'Date' is parsed as datetime
+            pl_df = pl_df.with_columns(
+                pl.col('Date').str.strptime(pl.Datetime, fmt="%Y-%m-%d").alias('Date')
+            )
+            return pl_df
         except Exception as e:
             st.error(f"Error fetching data for {ticker}: {e}")
             raise
