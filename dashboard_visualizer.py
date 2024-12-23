@@ -36,6 +36,10 @@ class DashboardVisualizer:
 
     def create_momentum_chart(self) -> go.Figure:
         """Create a Momentum Chart including Moving Averages."""
+        if 'MOMO_SCORE' not in self.primary.df.columns:
+            debug_log("Error: 'MOMO_SCORE' not found in DataFrame")
+            raise KeyError("'MOMO_SCORE' column is missing. Ensure add_momentum_indicators() is called.")
+        
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=self.primary.df.index,
