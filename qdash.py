@@ -221,6 +221,7 @@ if st.button("Compare"):
             df_secondary = add_extreme_markers(df_secondary)
             df_secondary = compute_rolling_return(df_secondary, weeks=4)
             df_secondary = create_price_ma_difference(df_secondary)
+            df_primary['Price_MA_Diff'] = df_primary['Price_MA_Diff'].fillna(0)
             stats_secondary = compute_stats(df_secondary)
 
     # --------------------------------------------------------------------------
