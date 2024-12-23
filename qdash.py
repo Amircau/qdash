@@ -52,7 +52,7 @@ class FinancialData:
             data.rename(columns=column_mapping, inplace=True)
     
             # Ensure 'Date' is parsed as datetime
-            data['Date'] = pd.to_datetime(data['Date'])
+            data['Date'] = pl.to_datetime(data['Date'])
     
             # Convert to Polars DataFrame
             return pl.DataFrame(data)
