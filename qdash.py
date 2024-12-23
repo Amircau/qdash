@@ -1,13 +1,3 @@
-# requirements.txt file content
-"""
-streamlit==1.31.0
-pandas==2.2.0
-numpy==1.26.3
-yfinance==0.2.35
-plotly==5.18.0
-scipy==1.12.0
-"""
-
 # app.py
 import streamlit as st
 import pandas as pd
