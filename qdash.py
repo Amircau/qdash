@@ -22,7 +22,11 @@ def main():
         debug_log("Primary Data after processing", primary_data.df.head())
 
         viz = DashboardVisualizer(primary_data)
+
         st.plotly_chart(viz.create_bollinger_chart(), use_container_width=True)
+        st.plotly_chart(viz.create_momentum_chart(), use_container_width=True)
+        st.plotly_chart(viz.create_price_ma_difference_chart(), use_container_width=True)
+        st.plotly_chart(viz.create_yearly_min_max_chart(), use_container_width=True)
 
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
