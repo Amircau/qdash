@@ -25,12 +25,12 @@ class Config:
 class FinancialData:
     """Class to handle all financial data operations"""
 
-    def __init__(self, ticker: str, start_date: datetime, end_date: datetime):
+    def __init__(_self, ticker: str, start_date: datetime, end_date: datetime):
         self.ticker = ticker
         self.df = self._fetch_data(ticker, start_date, end_date)
 
     @st.cache_data  # Add caching to prevent repeated data fetching
-    def _fetch_data(_self, ticker: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
+    def _fetch_data(__self, ticker: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
         """Fetch and clean data from yfinance"""
         df = yf.download(ticker, start=start_date, end=end_date)
         if df.empty:
@@ -80,7 +80,7 @@ class FinancialData:
         self.df['Year'] = self.df.index.year
         return self.df.groupby('Year')['close'].agg(['min', 'max']).reset_index()
 
-    def add_bollinger_bands(self, window: int = 20, num_std: int = 2) -> None:
+    def add_bollinger_bands(_self, window: int = 20, num_std: int = 2) -> None:
         """Calculate Bollinger Bands"""
         self.df['BB_MA'] = self.df['close'].rolling(window=window).mean()
         self.df['BB_STD'] = self.df['close'].rolling(window=window).std()
@@ -90,7 +90,7 @@ class FinancialData:
 class DashboardVisualizer:
     """Class to handle all visualization logic"""
 
-    def __init__(self, primary_data: FinancialData, secondary_data: Optional[FinancialData] = None):
+    def __init__(_self, primary_data: FinancialData, secondary_data: Optional[FinancialData] = None):
         self.primary = primary_data
         self.secondary = secondary_data
 
