@@ -52,28 +52,36 @@ class FinancialData:
     def add_momentum_indicators(self) -> None:
         """Add momentum indicators to the dataframe."""
         try:
+            # Add Moving Averages
             for period in Config.MOVING_AVERAGE_PERIODS:
                 self.df[f'MA{period}'] = self.df['close'].rolling(window=period).mean()
             debug_log("Added Moving Averages", self.df[[f'MA{p}' for p in Config.MOVING_AVERAGE_PERIODS]].head())
-
+    
+            # Add Rate of Change (ROC)
             for period in Config.ROC_PERIODS:
-                self.df[f'ROC{period}'] = (
-                    (self.df['close'] - self.df['close'].shift(period)) /
-                    self.df['close'].shift(period)
-                ) * 100
+                if 'close' in self.df.columns:
+                    self.df[f'ROC{period}'] = (
+                        (self.df['close'] - self.df['close'].shift(period)) /
+                        self.df['close'].shift(period)
+                    ) * 100
+                else:
+                    raise KeyError("'close' column is missing in the DataFrame.")
             debug_log("Added Rate of Change (ROC)", self.df[[f'ROC{p}' for p in Config.ROC_PERIODS]].head())
-
+    
+            # Calculate MOMO_SCORE
             roc_cols = [f'ROC{period}' for period in Config.ROC_PERIODS]
-            if all(col in self.df.columns for col in roc_cols):
-                weights = np.array([0.4, 0.3, 0.2, 0.1])
-                self.df['MOMO_SCORE'] = self.df[roc_cols].dot(weights)
-                debug_log("Added MOMO_SCORE", self.df[['MOMO_SCORE']].head())
-            else:
-                raise KeyError("Some ROC columns are missing. MOMO_SCORE cannot be calculated.")
-
+            missing_roc_cols = [col for col in roc_cols if col not in self.df.columns]
+            if missing_roc_cols:
+                raise KeyError(f"Missing ROC columns: {missing_roc_cols}")
+    
+            weights = np.array([0.4, 0.3, 0.2, 0.1])
+            self.df['MOMO_SCORE'] = self.df[roc_cols].dot(weights)
+            debug_log("Added MOMO_SCORE", self.df[['MOMO_SCORE']].head())
+    
         except Exception as e:
             debug_log("Error in add_momentum_indicators", e)
             raise
+
 
     def add_bollinger_bands(self, window: int = 20, num_std: int = 2) -> None:
         """
