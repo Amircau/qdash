@@ -23,6 +23,12 @@ class Config:
 # --------------------------------------------------------------------------------
 # Data Models
 # --------------------------------------------------------------------------------
+def debug_log(message, value=None):
+    """Log debug information."""
+    print(f"DEBUG: {message}")
+    if value is not None:
+        print(value)
+        
 class FinancialData:
     """Class to handle all financial data operations"""
 
@@ -54,7 +60,10 @@ class FinancialData:
     
             # Convert to Polars DataFrame
             pl_df = pl.DataFrame(data)
-            
+    
+            # Handle unexpected column formats
+            if "('Date', '')" in pl_df.columns:
+                pl_df = pl_df.rename({'(\'Date\', \'\')': 'Date'})
     
             # Ensure 'Date' is parsed as datetime
             pl_df = pl_df.with_columns(
@@ -64,6 +73,7 @@ class FinancialData:
         except Exception as e:
             debug_log("Error fetching data for ticker", e)
             raise
+
 
 
     def add_momentum_indicators(self) -> None:
