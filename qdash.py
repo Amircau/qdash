@@ -1,4 +1,4 @@
-# app.py
+import pandas as pd  # Add this import
 import streamlit as st
 from datetime import datetime
 from financial_data import FinancialData, Config
