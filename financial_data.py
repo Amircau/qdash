@@ -1,3 +1,14 @@
+# Directory Structure
+# ├── my-financial-dashboard/
+# │   ├── app.py                  # Main Streamlit application
+# │   ├── financial_data.py       # Data fetching and manipulation logic
+# │   ├── dashboard_visualizer.py # Visualization components
+# │   ├── config.py              # Configuration and constants
+# │   ├── requirements.txt        # Python dependencies
+# │   ├── README.md               # Project documentation
+# │   ├── .gitignore              # Ignored files for Git
+
+# financial_data.py
 import pandas as pd
 import numpy as np
 import yfinance as yf
