@@ -58,9 +58,9 @@ class FinancialData:
             }
             data.rename(columns=column_mapping, inplace=True)
     
-            # Debug: Ensure 'Date' exists in Pandas DataFrame
+            # Ensure 'Date' exists as a column and not part of the index
             if 'Date' not in data.columns:
-                raise KeyError("'Date' column is missing after reset_index.")
+                raise KeyError("'Date' column is missing after resetting the index.")
     
             # Convert to Polars DataFrame
             pl_df = pl.DataFrame(data)
@@ -80,6 +80,7 @@ class FinancialData:
         except Exception as e:
             debug_log("Error fetching data for ticker", e)
             raise
+
 
 
     def add_momentum_indicators(self) -> None:
