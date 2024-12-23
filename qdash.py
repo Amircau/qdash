@@ -26,8 +26,8 @@ class FinancialData:
     """Class to handle all financial data operations"""
 
     def __init__(_self, ticker: str, start_date: datetime, end_date: datetime):
-        self.ticker = ticker
-        self.df = self._fetch_data(ticker, start_date, end_date)
+        _self.ticker = ticker
+        _self.df = _self._fetch_data(ticker, start_date, end_date)
 
     @st.cache_data  # Add caching to prevent repeated data fetching
     def _fetch_data(__self, ticker: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
@@ -48,79 +48,79 @@ class FinancialData:
     def add_momentum_indicators(self) -> None:
         """Add momentum indicators to the dataframe"""
         for period in Config.MOVING_AVERAGE_PERIODS:
-            self.df[f'MA{period}'] = self.df['close'].rolling(window=period).mean()
+            _self.df[f'MA{period}'] = _self.df['close'].rolling(window=period).mean()
 
         for period in Config.ROC_PERIODS:
-            self.df[f'ROC{period}'] = (
-                (self.df['close'] - self.df['close'].shift(period)) /
-                self.df['close'].shift(period)
+            _self.df[f'ROC{period}'] = (
+                (_self.df['close'] - _self.df['close'].shift(period)) /
+                _self.df['close'].shift(period)
             ) * 100
 
         roc_cols = [f'ROC{period}' for period in Config.ROC_PERIODS]
         weights = np.array([0.4, 0.3, 0.2, 0.1])
-        self.df['MOMO_SCORE'] = np.average(self.df[roc_cols], axis=1, weights=weights)
+        _self.df['MOMO_SCORE'] = np.average(_self.df[roc_cols], axis=1, weights=weights)
 
         for period in Config.MOVING_AVERAGE_PERIODS:
-            self.df[f'MOMO_MA{period}'] = self.df['MOMO_SCORE'].rolling(window=period).mean()
+            _self.df[f'MOMO_MA{period}'] = _self.df['MOMO_SCORE'].rolling(window=period).mean()
 
     def compute_rolling_return(self) -> None:
         """Compute 4-week rolling return"""
         weeks = Config.ROLLING_WINDOW_WEEKS
         shift_days = weeks * 5
-        self.df['4W_RETURN'] = (self.df['close'] / self.df['close'].shift(shift_days)) - 1
+        _self.df['4W_RETURN'] = (_self.df['close'] / _self.df['close'].shift(shift_days)) - 1
 
     def compute_seasonality(self) -> pd.DataFrame:
         """Group by week-of-year and compute average 4W return"""
-        self.df['week_of_year'] = self.df.index.isocalendar().week
-        self.df['week_of_year'] = self.df['week_of_year'].apply(lambda x: 52 if x > 52 else x)
-        return self.df.groupby('week_of_year')['4W_RETURN'].mean().reset_index(name='avg_4w_return')
+        _self.df['week_of_year'] = _self.df.index.isocalendar().week
+        _self.df['week_of_year'] = _self.df['week_of_year'].apply(lambda x: 52 if x > 52 else x)
+        return _self.df.groupby('week_of_year')['4W_RETURN'].mean().reset_index(name='avg_4w_return')
 
     def compute_yearly_min_max(self) -> pd.DataFrame:
         """Compute yearly min and max prices"""
-        self.df['Year'] = self.df.index.year
-        return self.df.groupby('Year')['close'].agg(['min', 'max']).reset_index()
+        _self.df['Year'] = _self.df.index.year
+        return _self.df.groupby('Year')['close'].agg(['min', 'max']).reset_index()
 
     def add_bollinger_bands(_self, window: int = 20, num_std: int = 2) -> None:
         """Calculate Bollinger Bands"""
-        self.df['BB_MA'] = self.df['close'].rolling(window=window).mean()
-        self.df['BB_STD'] = self.df['close'].rolling(window=window).std()
-        self.df['BB_Upper'] = self.df['BB_MA'] + (num_std * self.df['BB_STD'])
-        self.df['BB_Lower'] = self.df['BB_MA'] - (num_std * self.df['BB_STD'])
+        _self.df['BB_MA'] = _self.df['close'].rolling(window=window).mean()
+        _self.df['BB_STD'] = _self.df['close'].rolling(window=window).std()
+        _self.df['BB_Upper'] = _self.df['BB_MA'] + (num_std * _self.df['BB_STD'])
+        _self.df['BB_Lower'] = _self.df['BB_MA'] - (num_std * _self.df['BB_STD'])
 
 class DashboardVisualizer:
     """Class to handle all visualization logic"""
 
     def __init__(_self, primary_data: FinancialData, secondary_data: Optional[FinancialData] = None):
-        self.primary = primary_data
-        self.secondary = secondary_data
+        _self.primary = primary_data
+        _self.secondary = secondary_data
 
     @st.cache_data  # Add caching for charts
     def create_momentum_chart(self) -> go.Figure:
         fig = go.Figure()
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['close'],
+            x=_self.primary.df.index,
+            y=_self.primary.df['close'],
             name='Price',
             line=dict(color='blue')
         ))
         for period in Config.MOVING_AVERAGE_PERIODS:
             fig.add_trace(go.Scatter(
-                x=self.primary.df.index,
-                y=self.primary.df[f'MA{period}'],
+                x=_self.primary.df.index,
+                y=_self.primary.df[f'MA{period}'],
                 name=f'{period}MA',
                 line=dict(dash='dot')
             ))
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['MOMO_SCORE'],
+            x=_self.primary.df.index,
+            y=_self.primary.df['MOMO_SCORE'],
             name='Momentum Score',
             yaxis='y2',
             line=dict(color='red')
         ))
         for period in Config.MOVING_AVERAGE_PERIODS:
             fig.add_trace(go.Scatter(
-                x=self.primary.df.index,
-                y=self.primary.df[f'MOMO_MA{period}'],
+                x=_self.primary.df.index,
+                y=_self.primary.df[f'MOMO_MA{period}'],
                 name=f'MOMO MA{period}',
                 line=dict(dash='dot', color='green')
             ))
@@ -133,10 +133,10 @@ class DashboardVisualizer:
 
     @st.cache_data
     def create_price_ma_difference_chart(self) -> go.Figure:
-        self.primary.df['Price_MA_Diff'] = self.primary.df['close'] - self.primary.df['MA21']
+        _self.primary.df['Price_MA_Diff'] = _self.primary.df['close'] - _self.primary.df['MA21']
         fig = px.line(
-            self.primary.df,
-            x=self.primary.df.index,
+            _self.primary.df,
+            x=_self.primary.df.index,
             y='Price_MA_Diff',
             title="Price - MA Difference"
         )
@@ -144,7 +144,7 @@ class DashboardVisualizer:
 
     @st.cache_data
     def create_seasonality_chart(self) -> go.Figure:
-        seasonality = self.primary.compute_seasonality()
+        seasonality = _self.primary.compute_seasonality()
         fig = px.bar(
             seasonality,
             x='week_of_year',
@@ -156,7 +156,7 @@ class DashboardVisualizer:
 
     @st.cache_data
     def create_yearly_min_max_chart(self) -> go.Figure:
-        yearly = self.primary.compute_yearly_min_max()
+        yearly = _self.primary.compute_yearly_min_max()
         fig = go.Figure()
         fig.add_trace(go.Bar(
             x=yearly['Year'],
@@ -178,20 +178,20 @@ class DashboardVisualizer:
 
     @st.cache_data
     def create_comparison_charts(self) -> Tuple[Optional[go.Figure], Optional[go.Figure]]:
-        if not self.secondary:
+        if not _self.secondary:
             return None, None
 
-        df_perf = pd.DataFrame(index=self.primary.df.index)
-        df_perf['Primary'] = self.primary.df['close'] / self.primary.df['close'].iloc[0] - 1
+        df_perf = pd.DataFrame(index=_self.primary.df.index)
+        df_perf['Primary'] = _self.primary.df['close'] / _self.primary.df['close'].iloc[0] - 1
         
-        self.secondary.df = self.secondary.df.reindex(self.primary.df.index, method='ffill')
-        df_perf['Secondary'] = self.secondary.df['close'] / self.secondary.df['close'].iloc[0] - 1
+        _self.secondary.df = _self.secondary.df.reindex(_self.primary.df.index, method='ffill')
+        df_perf['Secondary'] = _self.secondary.df['close'] / _self.secondary.df['close'].iloc[0] - 1
         df_perf['Gap'] = df_perf['Primary'] - df_perf['Secondary']
 
         fig_gap = px.line(df_perf, x=df_perf.index, y='Gap', title="Performance Gap")
         fig_ratio = px.line(
-            x=self.primary.df.index,
-            y=self.primary.df['close'] / self.secondary.df['close'],
+            x=_self.primary.df.index,
+            y=_self.primary.df['close'] / _self.secondary.df['close'],
             title="Ratio Spread"
         )
         return fig_gap, fig_ratio
@@ -200,26 +200,26 @@ class DashboardVisualizer:
     def create_bollinger_chart(self) -> go.Figure:
         fig = go.Figure()
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['close'],
+            x=_self.primary.df.index,
+            y=_self.primary.df['close'],
             name='Price',
             line=dict(color='blue')
         ))
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['BB_Upper'],
+            x=_self.primary.df.index,
+            y=_self.primary.df['BB_Upper'],
             name='Bollinger Upper',
             line=dict(color='red', dash='dot')
         ))
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['BB_MA'],
+            x=_self.primary.df.index,
+            y=_self.primary.df['BB_MA'],
             name='Bollinger MA',
             line=dict(color='orange', dash='dash')
         ))
         fig.add_trace(go.Scatter(
-            x=self.primary.df.index,
-            y=self.primary.df['BB_Lower'],
+            x=_self.primary.df.index,
+            y=_self.primary.df['BB_Lower'],
             name='Bollinger Lower',
             line=dict(color='green', dash='dot')
         ))
