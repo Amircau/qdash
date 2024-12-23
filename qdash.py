@@ -36,13 +36,30 @@ class FinancialData:
             data = yf.download(ticker, start=start_date, end=end_date)
             if data.empty:
                 raise ValueError(f"No data found for {ticker}")
-
+    
+            # Reset index to include the date
             data.reset_index(inplace=True)
-            data.rename(columns={'Close': 'close', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Volume': 'volume'}, inplace=True)
+    
+            # Rename columns to match the expected format
+            column_mapping = {
+                'Date': 'Date',
+                'Close': 'close',
+                'Open': 'open',
+                'High': 'high',
+                'Low': 'low',
+                'Volume': 'volume'
+            }
+            data.rename(columns=column_mapping, inplace=True)
+    
+            # Ensure 'Date' is parsed as datetime
+            data['Date'] = pd.to_datetime(data['Date'])
+    
+            # Convert to Polars DataFrame
             return pl.DataFrame(data)
         except Exception as e:
             st.error(f"Error fetching data for {ticker}: {e}")
             raise
+
 
     def add_momentum_indicators(self) -> None:
         """Add momentum indicators to the dataframe"""
