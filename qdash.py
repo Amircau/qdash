@@ -110,6 +110,7 @@ def create_price_ma_difference(df):
     # Ensure both 'close' and 'MA21' exist in DataFrame
     if 'close' in df.columns and 'MA21' in df.columns:
         df['Price_MA_Diff'] = df['close'] - df['MA21']
+        df['Price_MA_Diff'] = df['Price_MA_Diff'].fillna(0)
     else:
         raise KeyError("Missing required columns 'close' or 'MA21' in the DataFrame.")
 
