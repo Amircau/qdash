@@ -5,5 +5,3 @@ This project is a financial dashboard built using Streamlit. It provides Bolling
 ## Features
 - Fetch stock data using Yahoo Finance.
 - Calculate and visualize Bollinger Bands.
-
-"""
