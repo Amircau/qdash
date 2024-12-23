@@ -1,3 +1,4 @@
+# dashboard_visualizer.py
 import plotly.graph_objects as go
 import plotly.express as px
 from financial_data import FinancialData, debug_log
@@ -31,4 +32,67 @@ class DashboardVisualizer:
         ))
         fig.update_layout(title="Bollinger Bands")
         debug_log("Created Bollinger Chart")
+        return fig
+
+    def create_momentum_chart(self) -> go.Figure:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=self.primary.df.index,
+            y=self.primary.df['close'],
+            name='Price',
+            line=dict(color='blue')
+        ))
+        for period in Config.MOVING_AVERAGE_PERIODS:
+            fig.add_trace(go.Scatter(
+                x=self.primary.df.index,
+                y=self.primary.df[f'MA{period}'],
+                name=f'{period}MA',
+                line=dict(dash='dot')
+            ))
+        fig.add_trace(go.Scatter(
+            x=self.primary.df.index,
+            y=self.primary.df['MOMO_SCORE'],
+            name='Momentum Score',
+            yaxis='y2',
+            line=dict(color='red')
+        ))
+        fig.update_layout(
+            title="Momentum Score and Moving Averages",
+            yaxis=dict(title="Price"),
+            yaxis2=dict(title="Momentum Score", overlaying="y", side="right")
+        )
+        debug_log("Created Momentum Chart")
+        return fig
+
+    def create_price_ma_difference_chart(self) -> go.Figure:
+        self.primary.df['Price_MA_Diff'] = self.primary.df['close'] - self.primary.df['MA21']
+        fig = px.line(
+            self.primary.df,
+            x=self.primary.df.index,
+            y='Price_MA_Diff',
+            title="Price - MA Difference"
+        )
+        debug_log("Created Price - MA Difference Chart")
+        return fig
+
+    def create_yearly_min_max_chart(self) -> go.Figure:
+        yearly = self.primary.df.groupby(self.primary.df.index.year)['close'].agg(['min', 'max']).reset_index()
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=yearly['index'],
+            y=yearly['min'],
+            name='Yearly Min',
+            marker_color='red'
+        ))
+        fig.add_trace(go.Bar(
+            x=yearly['index'],
+            y=yearly['max'],
+            name='Yearly Max',
+            marker_color='blue'
+        ))
+        fig.update_layout(
+            title="Yearly Min and Max Prices",
+            barmode='group'
+        )
+        debug_log("Created Yearly Min-Max Chart")
         return fig
