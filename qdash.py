@@ -1,3 +1,14 @@
+# requirements.txt file content
+"""
+streamlit==1.31.0
+pandas==2.2.0
+numpy==1.26.3
+yfinance==0.2.35
+plotly==5.18.0
+scipy==1.12.0
+"""
+
+# app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -6,184 +17,272 @@ import plotly.express as px
 import plotly.graph_objects as go
 from scipy.stats import sem, t
 from datetime import datetime
+from typing import Optional, Tuple
+from dataclasses import dataclass
 
-# --------------------------------------------------------------------------------
-# Utility Functions
-# --------------------------------------------------------------------------------
-def fetch_data(ticker, start_date, end_date):
-    """Fetch data from yfinance and rename columns for convenience."""
-    df = yf.download(ticker, start=start_date, end=end_date)
-    df.rename(
-        columns={
+# Set page config at the very beginning
+st.set_page_config(page_title="Enhanced Financial Dashboard", layout="wide")
+
+@dataclass
+class Config:
+    """Configuration settings for the dashboard"""
+    MOVING_AVERAGE_PERIODS = [10, 21, 63]
+    ROC_PERIODS = [10, 21, 63, 252]
+    ROLLING_WINDOW_WEEKS = 4
+    STD_DEV_BANDS = [2, 3]
+    DEFAULT_START_DATE = "1960-01-01"
+
+class FinancialData:
+    """Class to handle all financial data operations"""
+
+    def __init__(self, ticker: str, start_date: datetime, end_date: datetime):
+        self.ticker = ticker
+        self.df = self._fetch_data(ticker, start_date, end_date)
+
+    @st.cache_data  # Add caching to prevent repeated data fetching
+    def _fetch_data(self, ticker: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
+        """Fetch and clean data from yfinance"""
+        df = yf.download(ticker, start=start_date, end=end_date)
+        if df.empty:
+            raise ValueError(f"No data found for {ticker}")
+
+        column_mapping = {
             'Close': 'close',
             'Open': 'open',
             'High': 'high',
             'Low': 'low',
             'Volume': 'volume'
-        },
-        inplace=True
-    )
-    return df
+        }
+        return df.rename(columns=column_mapping)
 
-def add_momentum_indicators(df):
-    """
-    Add various technical and momentum indicators:
-      - 10 / 63-day moving averages
-      - Rate of Change (ROC) for multiple periods
-      - MOMO_SCORE (average of the ROC values)
-    """
-    # Moving Averages (excluding MA21)
-    df['MA10'] = df['close'].rolling(window=10).mean()
-    df['MA63'] = df['close'].rolling(window=63).mean()
+    def add_momentum_indicators(self) -> None:
+        """Add momentum indicators to the dataframe"""
+        for period in Config.MOVING_AVERAGE_PERIODS:
+            self.df[f'MA{period}'] = self.df['close'].rolling(window=period).mean()
 
-    # Rate of Change
-    for period in [10, 63, 252]:
-        df[f'ROC{period}'] = (
-            (df['close'] - df['close'].shift(period)) / df['close'].shift(period)
-        ) * 100
+        for period in Config.ROC_PERIODS:
+            self.df[f'ROC{period}'] = (
+                (self.df['close'] - self.df['close'].shift(period)) /
+                self.df['close'].shift(period)
+            ) * 100
 
-    # MOMO Score = average(ROC10, ROC63, ROC252)
-    df['MOMO_SCORE'] = df[['ROC10', 'ROC63', 'ROC252']].mean(axis=1)
+        roc_cols = [f'ROC{period}' for period in Config.ROC_PERIODS]
+        weights = np.array([0.4, 0.3, 0.2, 0.1])
+        self.df['MOMO_SCORE'] = np.average(self.df[roc_cols], axis=1, weights=weights)
 
-    return df
+        for period in Config.MOVING_AVERAGE_PERIODS:
+            self.df[f'MOMO_MA{period}'] = self.df['MOMO_SCORE'].rolling(window=period).mean()
 
-def add_extreme_markers(df):
-    """
-    Calculate daily returns and add flags:
-      - XU1, XU2: Extreme Ups
-      - XD1, XD2: Extreme Downs
-    """
-    df['daily_return'] = df['close'].pct_change()
-    mean_ret = df['daily_return'].mean()
-    std_ret = df['daily_return'].std()
+    def compute_rolling_return(self) -> None:
+        """Compute 4-week rolling return"""
+        weeks = Config.ROLLING_WINDOW_WEEKS
+        shift_days = weeks * 5
+        self.df['4W_RETURN'] = (self.df['close'] / self.df['close'].shift(shift_days)) - 1
 
-    # XU1 = daily_return > mean + 2*std
-    df['XU1'] = df['daily_return'] > (mean_ret + 2 * std_ret)
-    # XU2 = daily_return > mean + 3*std
-    df['XU2'] = df['daily_return'] > (mean_ret + 3 * std_ret)
-    # XD1 = daily_return < mean - 2*std
-    df['XD1'] = df['daily_return'] < (mean_ret - 2 * std_ret)
-    # XD2 = daily_return < (mean - 3*std)
-    df['XD2'] = df['daily_return'] < (mean_ret - 3 * std_ret)
+    def compute_seasonality(self) -> pd.DataFrame:
+        """Group by week-of-year and compute average 4W return"""
+        self.df['week_of_year'] = self.df.index.isocalendar().week
+        self.df['week_of_year'] = self.df['week_of_year'].apply(lambda x: 52 if x > 52 else x)
+        return self.df.groupby('week_of_year')['4W_RETURN'].mean().reset_index(name='avg_4w_return')
 
-    return df
+    def compute_yearly_min_max(self) -> pd.DataFrame:
+        """Compute yearly min and max prices"""
+        self.df['Year'] = self.df.index.year
+        return self.df.groupby('Year')['close'].agg(['min', 'max']).reset_index()
 
-def compute_rolling_return(df, weeks=4):
-    """
-    Creates a 4W_RETURN column representing the total return over ~20 trading days (4 weeks).
-    Also computes 'ROLLING_RETURN_4W' as the rolling average of daily returns.
-    """
-    shift_days = weeks * 5  # ~20 trading days for 4 weeks
-    df['4W_RETURN'] = np.nan
+    def add_bollinger_bands(self, window: int = 20, num_std: int = 2) -> None:
+        """Calculate Bollinger Bands"""
+        self.df['BB_MA'] = self.df['close'].rolling(window=window).mean()
+        self.df['BB_STD'] = self.df['close'].rolling(window=window).std()
+        self.df['BB_Upper'] = self.df['BB_MA'] + (num_std * self.df['BB_STD'])
+        self.df['BB_Lower'] = self.df['BB_MA'] - (num_std * self.df['BB_STD'])
 
-    prev_close = df['close'].shift(shift_days)
-    df['4W_RETURN'] = np.where(
-        (pd.notna(df['close']) & pd.notna(prev_close) & (prev_close != 0)),
-        (df['close'] / prev_close) - 1,
-        np.nan
-    )
+class DashboardVisualizer:
+    """Class to handle all visualization logic"""
 
-    # 2) "ROLLING_RETURN_4W": a rolling average of daily returns
-    df['daily_return'] = df['close'].pct_change()
-    df['ROLLING_RETURN_4W'] = df['daily_return'].rolling(weeks * 5).mean()
+    def __init__(self, primary_data: FinancialData, secondary_data: Optional[FinancialData] = None):
+        self.primary = primary_data
+        self.secondary = secondary_data
 
-    return df
+    @st.cache_data  # Add caching for charts
+    def create_momentum_chart(self) -> go.Figure:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=self.primary.df.index,
+            y=self.primary.df['close'],
+            name='Price',
+            line=dict(color='blue')
+        ))
+        for period in Config.MOVING_AVERAGE_PERIODS:
+            fig.add_trace(go.Scatter(
+                x=self.primary.df.index,
+                y=self.primary.df[f'MA{period}'],
+                name=f'{period}MA',
+                line=dict(dash='dot')
+            ))
+        fig.add_trace(go.Scatter(
+            x=self.primary.df.index,
+            y=self.primary.df['MOMO_SCORE'],
+            name='Momentum Score',
+            yaxis='y2',
+            line=dict(color='red')
+        ))
+        for period in Config.MOVING_AVERAGE_PERIODS:
+            fig.add_trace(go.Scatter(
+                x=self.primary.df.index,
+                y=self.primary.df[f'MOMO_MA{period}'],
+                name=f'MOMO MA{period}',
+                line=dict(dash='dot', color='green')
+            ))
+        fig.update_layout(
+            title="Momentum Score and Moving Averages",
+            yaxis=dict(title="Price"),
+            yaxis2=dict(title="Momentum Score", overlaying="y", side="right")
+        )
+        return fig
 
-def compute_yearly_min_max(df):
-    """
-    Return a DataFrame with columns 'Year', 'MIN', 'MAX' for the close price.
-    """
-    df['Year'] = df.index.year
-    grouped = df.groupby('Year')['close'].agg(['min', 'max']).reset_index()
-    grouped.rename(columns={'min': 'MIN', 'max': 'MAX'}, inplace=True)
-    return grouped
+    @st.cache_data
+    def create_price_ma_difference_chart(self) -> go.Figure:
+        self.primary.df['Price_MA_Diff'] = self.primary.df['close'] - self.primary.df['MA21']
+        fig = px.line(
+            self.primary.df,
+            x=self.primary.df.index,
+            y='Price_MA_Diff',
+            title="Price - MA Difference"
+        )
+        return fig
 
-def compute_stats(df):
-    """
-    Compute statistical metrics (mean, std, variance, etc.) for reference.
-    """
-    close_prices = df['close'].dropna()
-    mean_val = close_prices.mean()
-    std_val = close_prices.std()
-    var_val = close_prices.var()
-    skew_val = close_prices.skew()
-    kurt_val = close_prices.kurt()
-    min_val = close_prices.min()
-    max_val = close_prices.max()
-    sum_val = close_prices.sum()
-    rng_val = max_val - min_val
+    @st.cache_data
+    def create_seasonality_chart(self) -> go.Figure:
+        seasonality = self.primary.compute_seasonality()
+        fig = px.bar(
+            seasonality,
+            x='week_of_year',
+            y='avg_4w_return',
+            title="Seasonality (4W Return)"
+        )
+        fig.update_yaxes(tickformat=".2%")
+        return fig
 
-    n = len(close_prices)
-    if n > 1:
-        std_err = sem(close_prices)
-        margin = std_err * t.ppf((1 + 0.95) / 2., n - 1)
-        ci_lower = mean_val - margin
-        ci_upper = mean_val + margin
-    else:
-        ci_lower = mean_val
-        ci_upper = mean_val
+    @st.cache_data
+    def create_yearly_min_max_chart(self) -> go.Figure:
+        yearly = self.primary.compute_yearly_min_max()
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=yearly['Year'],
+            y=yearly['min'],
+            name='Yearly Min',
+            marker_color='red'
+        ))
+        fig.add_trace(go.Bar(
+            x=yearly['Year'],
+            y=yearly['max'],
+            name='Yearly Max',
+            marker_color='blue'
+        ))
+        fig.update_layout(
+            title="Yearly Min and Max Prices",
+            barmode='group'
+        )
+        return fig
 
-    stats = {
-        'mean': mean_val,
-        'std_dev': std_val,
-        'variance': var_val,
-        'skewness': skew_val,
-        'kurtosis': kurt_val,
-        'min': min_val,
-        'max': max_val,
-        'sum': sum_val,
-        'range': rng_val,
-        'ci_95_lower': ci_lower,
-        'ci_95_upper': ci_upper
-    }
-    return stats
+    @st.cache_data
+    def create_comparison_charts(self) -> Tuple[Optional[go.Figure], Optional[go.Figure]]:
+        if not self.secondary:
+            return None, None
 
-def compute_seasonality_4w_return(df):
-    """
-    Group by week-of-year (1..52) using the '4W_RETURN' column,
-    compute the average 4W return across all years for that week.
-    """
-    df['week_of_year'] = df.index.isocalendar().week
-    df['week_of_year'] = df['week_of_year'].apply(lambda w: 52 if w > 52 else w)
+        df_perf = pd.DataFrame(index=self.primary.df.index)
+        df_perf['Primary'] = self.primary.df['close'] / self.primary.df['close'].iloc[0] - 1
+        
+        self.secondary.df = self.secondary.df.reindex(self.primary.df.index, method='ffill')
+        df_perf['Secondary'] = self.secondary.df['close'] / self.secondary.df['close'].iloc[0] - 1
+        df_perf['Gap'] = df_perf['Primary'] - df_perf['Secondary']
 
-    grouped = df.groupby('week_of_year')['4W_RETURN'].mean(numeric_only=True)
-    seasonality = grouped.reset_index()
-    seasonality.rename(columns={'4W_RETURN': 'avg_4w_return'}, inplace=True)
-    return seasonality
+        fig_gap = px.line(df_perf, x=df_perf.index, y='Gap', title="Performance Gap")
+        fig_ratio = px.line(
+            x=self.primary.df.index,
+            y=self.primary.df['close'] / self.secondary.df['close'],
+            title="Ratio Spread"
+        )
+        return fig_gap, fig_ratio
 
-# --------------------------------------------------------------------------------
-# Streamlit App Layout
-# --------------------------------------------------------------------------------
-st.set_page_config(page_title="Multi-Chart Financial Dashboard", layout="wide")
+    @st.cache_data
+    def create_bollinger_chart(self) -> go.Figure:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=self.primary.df.index,
+            y=self.primary.df['close'],
+            name='Price',
+            line=dict(color='blue')
+        ))
+        fig.add_trace(go.Scatter(
+            x=self.primary.df.index,
+            y=self.primary.df['BB_Upper'],
+            name='Bollinger Upper',
+            line=dict(color='red', dash='dot')
+        ))
+        fig.add_trace(go.Scatter(
+            x=self.primary.df.index,
+            y=self.primary.df['BB_MA'],
+            name='Bollinger MA',
+            line=dict(color='orange', dash='dash')
+        ))
+        fig.add_trace(go.Scatter(
+            x=self.primary.df.index,
+            y=self.primary.df['BB_Lower'],
+            name='Bollinger Lower',
+            line=dict(color='green', dash='dot')
+        ))
+        fig.update_layout(title="Bollinger Bands")
+        return fig
 
-st.title("Multi-Chart Financial Dashboard")
+# Sidebar and main app
+st.title("Enhanced Financial Dashboard")
 
-primary_ticker = st.text_input("Stock:", value="TSLA")
-secondary_ticker = st.text_input("Compare:", value="")
-start_date = st.date_input("Start Date", value=pd.to_datetime("1960-01-01"))
-end_date = st.date_input("End Date", value=pd.to_datetime("today"))
+with st.sidebar:
+    st.header("Configuration")
+    primary_ticker = st.text_input("Primary Ticker:", value="AAPL")
+    secondary_ticker = st.text_input("Secondary Ticker (optional):", value="")
+    start_date = st.date_input("Start Date", value=pd.to_datetime(Config.DEFAULT_START_DATE))
+    end_date = st.date_input("End Date", value=pd.to_datetime("today"))
 
-if st.button("Compare"):
-    # --------------------------------------------------------------------------
-    # 1) Fetch & Process Primary Ticker
-    # --------------------------------------------------------------------------
-    if not primary_ticker:
-        st.error("Please enter a primary ticker.")
-        st.stop()
+try:
+    # Initialize data and visualizations with error handling
+    with st.spinner('Fetching data...'):
+        primary_data = FinancialData(primary_ticker, start_date, end_date)
+        primary_data.add_momentum_indicators()
+        primary_data.compute_rolling_return()
+        primary_data.add_bollinger_bands(window=20, num_std=2)
 
-    df_primary = fetch_data(primary_ticker, start_date, end_date)
-    if df_primary.empty:
-        st.error(f"No data found for {primary_ticker} in the given date range.")
-        st.stop()
+        secondary_data = None
+        if secondary_ticker:
+            secondary_data = FinancialData(secondary_ticker, start_date, end_date)
+            secondary_data.add_momentum_indicators()
+            secondary_data.compute_rolling_return()
 
-    df_primary = add_momentum_indicators(df_primary)
-    df_primary = add_extreme_markers(df_primary)
-    df_primary = compute_rolling_return(df_primary, weeks=4)
-    stats_primary = compute_stats(df_primary)
+        viz = DashboardVisualizer(primary_data, secondary_data)
 
-    st.write("Primary DataFrame:")
-    st.write(df_primary.head())
+        # Display charts in columns
+        col1, col2 = st.columns(2)
+        with col1:
+            st.plotly_chart(viz.create_momentum_chart(), use_container_width=True)
+        with col2:
+            st.plotly_chart(viz.create_price_ma_difference_chart(), use_container_width=True)
 
-    # Show stats
-    st.subheader("Statistics")
-    st.write(stats_primary)
+        col3, col4 = st.columns(2)
+        with col3:
+            st.plotly_chart(viz.create_seasonality_chart(), use_container_width=True)
+        with col4:
+            st.plotly_chart(viz.create_yearly_min_max_chart(), use_container_width=True)
+
+        if secondary_data:
+            fig_gap, fig_ratio = viz.create_comparison_charts()
+            if fig_gap is not None:
+                st.plotly_chart(fig_gap, use_container_width=True)
+            if fig_ratio is not None:
+                st.plotly_chart(fig_ratio, use_container_width=True)
+
+        st.plotly_chart(viz.create_bollinger_chart(), use_container_width=True)
+
+except Exception as e:
+    st.error(f"An error occurred: {str(e)}")
