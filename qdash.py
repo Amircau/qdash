@@ -54,6 +54,9 @@ class FinancialData:
     
             # Convert to Polars DataFrame
             pl_df = pl.DataFrame(data)
+            
+            # Debugging: Log the columns and first few rows
+            debug_log("Polars DataFrame columns and data", pl_df)
     
             # Ensure 'Date' is parsed as datetime
             pl_df = pl_df.with_columns(
@@ -61,7 +64,7 @@ class FinancialData:
             )
             return pl_df
         except Exception as e:
-            st.error(f"Error fetching data for {ticker}: {e}")
+            debug_log("Error fetching data for ticker", e)
             raise
 
 
