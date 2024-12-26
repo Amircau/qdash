@@ -1,11 +1,12 @@
 # charts/comparison_charts.py
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Optional
 
 @st.cache_data
-def create_comparison_charts(df_primary: pd.DataFrame, df_secondary: pd.DataFrame) -> Tuple[Optional[go.Figure], Optional[go.Figure]]:
+def create_comparison_charts(df_primary: pd.DataFrame, df_secondary: pd.DataFrame) -> Tuple[go.Figure, go.Figure]:
     df_perf = pd.DataFrame(index=df_primary.index)
     df_perf['Primary'] = df_primary['close'] / df_primary['close'].iloc[0] - 1
     
