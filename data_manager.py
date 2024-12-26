@@ -81,3 +81,29 @@ class FinancialData:
         self.df['BB_STD'] = self.df['close'].rolling(window=window).std()
         self.df['BB_Upper'] = self.df['BB_MA'] + (num_std * self.df['BB_STD'])
         self.df['BB_Lower'] = self.df['BB_MA'] - (num_std * self.df['BB_STD'])
+
+# NEW METHOD: Compute weekly consecutive Min/Max, labeled W1, W2, ...
+    def compute_weekly_min_max(self) -> pd.DataFrame:
+        """
+        Create a consecutive 'Week' counter from the earliest date in the DataFrame.
+        For each 7-day period, compute the min and max of 'close'.
+        Return columns: ['Week', 'Min', 'Max']
+        """
+        # Ensure DataFrame is sorted by date
+        self.df.sort_index(inplace=True)
+
+        # Create a consecutive week counter since earliest date
+        # (difference in days from the min index, integer-divided by 7) + 1
+        first_date = self.df.index.min()
+        self.df['WeekCounter'] = ((self.df.index - first_date).days // 7) + 1
+
+        # Group by this new consecutive WeekCounter
+        grouped = self.df.groupby('WeekCounter')['close'].agg(['min', 'max']).reset_index()
+
+        # Rename columns to match the chart function
+        grouped.rename(columns={'WeekCounter': 'Week', 'min': 'Min', 'max': 'Max'}, inplace=True)
+
+        # Convert numeric week to label, e.g. "W1", "W2", ...
+        grouped['Week'] = grouped['Week'].apply(lambda x: f'W{x}')
+
+        return grouped
