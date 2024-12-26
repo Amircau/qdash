@@ -6,48 +6,41 @@ import pandas as pd
 @st.cache_data
 def create_yearly_min_max_chart(df: pd.DataFrame) -> go.Figure:
     """
-    df is expected to have the following columns (rename as needed):
-      - 'WeekNumber': e.g., W1, W2, W3, ...
-      - 'MinValue':   numeric values (negative or positive)
-      - 'MaxValue':   numeric values (negative or positive)
+    Expects a DataFrame with columns: ['Year', 'min', 'max'] 
+    as returned by financial_data.compute_yearly_min_max().
     """
-
-    # Make a copy to avoid modifying the original DataFrame
+    # Make a copy to avoid modifying the original
     df = df.copy()
 
-    # Create the figure
     fig = go.Figure()
 
-    # Add MIN bars (red)
+    # Add a Bar trace for MIN values (red)
     fig.add_trace(go.Bar(
-        x=df['WeekNumber'],     # e.g., W1, W2, ...
-        y=df['MinValue'],
+        x=df['Year'],         # X-axis: each calendar year
+        y=df['min'],          # Y-axis: the min price
         name='MIN',
         marker_color='red'
     ))
 
-    # Add MAX bars (blue)
+    # Add a Bar trace for MAX values (blue)
     fig.add_trace(go.Bar(
-        x=df['WeekNumber'],
-        y=df['MaxValue'],
+        x=df['Year'],
+        y=df['max'],
         name='MAX',
         marker_color='blue'
     ))
 
-    # Customize the layout
+    # Update layout
     fig.update_layout(
-        title="Yearly Min \\ Max Price",
-        xaxis_title="DATE (Week)",
-        yaxis_title="Price / Return",
-        barmode='group',   # shows MIN and MAX side by side for each week
+        title="Yearly Min / Max Price",
+        xaxis_title="Year",
+        yaxis_title="Price",
+        barmode='group',  # Show min and max side by side
         legend=dict(
-            x=0.9,
+            x=0.8,
             y=1.1,
             orientation='h'
-        )
+        ),
     )
-
-    # Optionally adjust y-axis range if desired
-    # fig.update_yaxes(range=[-1, 1])
 
     return fig
