@@ -66,7 +66,7 @@ try:
         with col4:
             yearly_data = primary_data.compute_weekly_min_max()
             fig_yearly = yearly_minmax_chart.create_yearly_min_max_chart(
-                weekly_data
+                yearly_data
             )
        
             st.plotly_chart(fig_yearly, use_container_width=True)
