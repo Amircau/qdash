@@ -63,13 +63,15 @@ try:
             )
             st.plotly_chart(fig_seasonality, use_container_width=True)
         
+    # -- REPLACE the old code in col4 with the new weekly min/max percentage chart --
         with col4:
-            yearly_data = primary_data.compute_weekly_min_max()
-            fig_yearly = yearly_minmax_chart.create_yearly_min_max_chart(
-                yearly_data
-            )
-       
-            st.plotly_chart(fig_yearly, use_container_width=True)
+            # 1) Get weekly min/max in % form
+            weekly_data = primary_data.compute_weekly_min_max()
+            # st.write("Weekly seasonality (Avg Min/Max %):", weekly_data)  # debug
+    
+            # 2) Create the new chart
+            fig_weekly = yearly_minmax_chart.create_yearly_min_max_chart(weekly_data)
+            st.plotly_chart(fig_weekly, use_container_width=True)
 
         # Comparison charts (if secondary ticker provided)
         if secondary_data:
