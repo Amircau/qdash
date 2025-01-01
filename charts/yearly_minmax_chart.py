@@ -1,3 +1,9 @@
+# yearly_minmax_chart.py
+import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
+
+
 def compute_weekly_min_max(self) -> pd.DataFrame:
     """
     1) For each (Year, WeekOfYear), find the min & max closing price.
