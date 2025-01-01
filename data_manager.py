@@ -14,7 +14,7 @@ class Config:
     ROC_PERIODS = [10, 21, 63, 252]
     ROLLING_WINDOW_WEEKS = 4
     STD_DEV_BANDS = [2, 3]
-    DEFAULT_START_DATE = "1960-01-01"
+    DEFAULT_START_DATE = "2017-01-01"
 
 class FinancialData:
     """Class to handle all financial data operations"""
