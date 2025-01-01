@@ -1,4 +1,3 @@
-# qdash.py
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -32,6 +31,8 @@ try:
         primary_data.add_momentum_indicators()
         primary_data.compute_rolling_return()
         primary_data.add_bollinger_bands(window=20, num_std=2)
+        primary_data.add_rsi(period=14)  # Add RSI calculation
+        primary_data.add_macd()          # Add MACD calculation
 
         # Secondary data initialization (if provided)
         secondary_data = None
@@ -63,15 +64,20 @@ try:
             )
             st.plotly_chart(fig_seasonality, use_container_width=True)
         
-    # -- REPLACE the old code in col4 with the new weekly min/max percentage chart --
         with col4:
-            # 1) Get weekly min/max in % form
             weekly_data = primary_data.compute_weekly_min_max()
-            # st.write("Weekly seasonality (Avg Min/Max %):", weekly_data)  # debug
-    
-            # 2) Create the new chart
             fig_weekly = yearly_minmax_chart.create_yearly_min_max_chart(weekly_data)
             st.plotly_chart(fig_weekly, use_container_width=True)
+
+        # RSI and MACD charts
+        col5, col6 = st.columns(2)
+        with col5:
+            fig_rsi = momentum_chart.create_rsi_chart(primary_data.df)
+            st.plotly_chart(fig_rsi, use_container_width=True)
+
+        with col6:
+            fig_macd = momentum_chart.create_macd_chart(primary_data.df)
+            st.plotly_chart(fig_macd, use_container_width=True)
 
         # Comparison charts (if secondary ticker provided)
         if secondary_data:
@@ -89,9 +95,6 @@ try:
             primary_data.df
         )
         st.plotly_chart(fig_bollinger, use_container_width=True)
-        # Create a new row of columns for the weekly min/max chart
-
-
 
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
