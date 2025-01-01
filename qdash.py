@@ -106,3 +106,6 @@ try:
             primary_data.df
         )
         st.plotly_chart(fig_bollinger, use_container_width=True)
+
+except Exception as e:
+    st.error(f"An error occurred: {str(e)}")
