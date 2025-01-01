@@ -13,7 +13,7 @@ def create_momentum_chart(df: pd.DataFrame, ma_periods: List[int]) -> go.Figure:
         x=df.index,
         y=df['close'],
         name='Price',
-        line=dict(color='blue')
+        line=dict(color='light_blue')
     ))
     for period in ma_periods:
         fig.add_trace(go.Scatter(
@@ -27,7 +27,7 @@ def create_momentum_chart(df: pd.DataFrame, ma_periods: List[int]) -> go.Figure:
         y=df['MOMO_SCORE'],
         name='Momentum Score',
         yaxis='y2',
-        line=dict(color='red')
+        line=dict(color='pink')
     ))
     fig.update_layout(
         title="Momentum Score and Moving Averages",
