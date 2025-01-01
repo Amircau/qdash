@@ -1,42 +1,51 @@
-# charts/momentum_chart.py
+# Enhancements to momentum_chart.py
+# Add new methods for RSI and MACD
+
 import plotly.graph_objects as go
-import streamlit as st
-import pandas as pd
 from typing import List
 
 @st.cache_data
-def create_momentum_chart(df: pd.DataFrame, ma_periods: List[int]) -> go.Figure:
+def create_rsi_chart(df: pd.DataFrame) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df.index,
-        y=df['close'],
-        name='Price',
-        line=dict(color='blue')
+        y=df['RSI'],
+        name='RSI',
+        line=dict(color='purple')
     ))
-    for period in ma_periods:
-        fig.add_trace(go.Scatter(
-            x=df.index,
-            y=df[f'MA{period}'],
-            name=f'{period}MA',
-            line=dict(dash='dot')
-        ))
+    fig.update_layout(
+        title="Relative Strength Index (RSI)",
+        yaxis=dict(title="RSI Value", range=[0, 100]),
+        shapes=[
+            dict(type="line", x0=df.index.min(), x1=df.index.max(), y0=70, y1=70, line=dict(color="red", dash="dot")),
+            dict(type="line", x0=df.index.min(), x1=df.index.max(), y0=30, y1=30, line=dict(color="green", dash="dot"))
+        ]
+    )
+    return fig
+
+@st.cache_data
+def create_macd_chart(df: pd.DataFrame) -> go.Figure:
+    fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df.index,
-        y=df['MOMO_SCORE'],
-        name='Momentum Score',
-        yaxis='y2',
-        line=dict(color='red')
+        y=df['MACD'],
+        name='MACD',
+        line=dict(color='blue')
     ))
-    for period in ma_periods:
-        fig.add_trace(go.Scatter(
-            x=df.index,
-            y=df[f'MOMO_MA{period}'],
-            name=f'MOMO MA{period}',
-            line=dict(dash='dot', color='green')
-        ))
+    fig.add_trace(go.Scatter(
+        x=df.index,
+        y=df['Signal_Line'],
+        name='Signal Line',
+        line=dict(color='orange', dash='dot')
+    ))
+    fig.add_trace(go.Bar(
+        x=df.index,
+        y=df['MACD_Histogram'],
+        name='MACD Histogram',
+        marker_color=['green' if x >= 0 else 'red' for x in df['MACD_Histogram']]
+    ))
     fig.update_layout(
-        title="Momentum Score and Moving Averages",
-        yaxis=dict(title="Price"),
-        yaxis2=dict(title="Momentum Score", overlaying="y", side="right")
+        title="MACD (Moving Average Convergence Divergence)",
+        yaxis=dict(title="MACD Value")
     )
     return fig
