@@ -1,6 +1,7 @@
 # Enhancements to momentum_chart.py
 # Add new methods for RSI and MACD
 import streamlit as st
+import pandas as pd
 import plotly.graph_objects as go
 from typing import List
 
