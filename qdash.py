@@ -31,7 +31,18 @@ try:
         primary_data.add_momentum_indicators()
         primary_data.compute_rolling_return()
         primary_data.add_bollinger_bands(window=20, num_std=2)
-        primary_data.add_rsi(period=14)  # Add RSI calculation
+
+        # Add RSI calculation with edge case handling
+        try:
+            delta = primary_data.df['close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            rs = gain / loss
+            primary_data.df['RSI'] = 100 - (100 / (1 + rs))
+        except Exception as rsi_error:
+            st.warning("RSI calculation encountered an error. Please verify input data.")
+            primary_data.df['RSI'] = None
+
         primary_data.add_macd()          # Add MACD calculation
 
         # Secondary data initialization (if provided)
