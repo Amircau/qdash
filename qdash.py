@@ -29,6 +29,9 @@ try:
         # Primary data initialization
         primary_data = FinancialData(primary_ticker, start_date, end_date)
         primary_data.add_momentum_indicators()
+        primary_data.df['ROC10'] = primary_data.df['close'].pct_change(10) * 100
+        primary_data.df['ROC63'] = primary_data.df['close'].pct_change(63) * 100
+        primary_data.df['MOMO_SCORE'] = (primary_data.df['ROC10'] + primary_data.df['ROC63']) / 2
         primary_data.compute_rolling_return()
         primary_data.add_bollinger_bands(window=20, num_std=2)
 
