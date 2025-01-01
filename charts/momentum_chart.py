@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 from typing import List
 
-@st.cache
+@st.cache_data
 def create_momentum_chart(df: pd.DataFrame, ma_periods: List[int]) -> go.Figure:
     """
     Create a chart showing price and momentum indicators, such as moving averages and momentum score.
@@ -36,7 +36,7 @@ def create_momentum_chart(df: pd.DataFrame, ma_periods: List[int]) -> go.Figure:
     )
     return fig
 
-@st.cache
+@st.cache_data
 def create_rsi_chart(df: pd.DataFrame) -> go.Figure:
     """
     Create an RSI chart with thresholds for overbought (70) and oversold (30) levels.
@@ -58,7 +58,7 @@ def create_rsi_chart(df: pd.DataFrame) -> go.Figure:
     )
     return fig
 
-@st.cache
+@st.cache_data
 def create_macd_chart(df: pd.DataFrame) -> go.Figure:
     """
     Create a MACD chart including MACD line, signal line, and histogram.
