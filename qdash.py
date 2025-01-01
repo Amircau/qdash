@@ -64,10 +64,11 @@ try:
             st.plotly_chart(fig_seasonality, use_container_width=True)
         
         with col4:
-            yearly_data = primary_data.compute_yearly_min_max()
+            yearly_data = primary_data.compute_weekly_min_max()
             fig_yearly = yearly_minmax_chart.create_yearly_min_max_chart(
-                yearly_data
+                weekly_data
             )
+       
             st.plotly_chart(fig_yearly, use_container_width=True)
 
         # Comparison charts (if secondary ticker provided)
@@ -87,18 +88,7 @@ try:
         )
         st.plotly_chart(fig_bollinger, use_container_width=True)
         # Create a new row of columns for the weekly min/max chart
-        col5, col6 = st.columns(2)
-        
-        with col5:
-            # Example usage of new weekly min/max
-            weekly_data = primary_data.compute_weekly_min_max()
-            # st.write(weekly_data.head())  # (Optional) debug to see the columns
-            st.write("DEBUG weekly_data:", weekly_data)
-            st.write("Columns:", weekly_data.columns)
-            fig_weekly_minmax = yearly_minmax_chart.create_yearly_min_max_chart(weekly_data)
-            st.plotly_chart(fig_weekly_minmax, use_container_width=True)
-        
-        # (You can use col6 for something else, or leave it empty.)
+
 
 
 except Exception as e:
