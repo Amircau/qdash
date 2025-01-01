@@ -11,7 +11,7 @@ import streamlit as st
 class Config:
     """Configuration settings for the dashboard"""
     MOVING_AVERAGE_PERIODS = [10, 21, 63]
-    ROC_PERIODS = [9, 21, 62, 252]
+    ROC_PERIODS = [10, 21, 63, 252]
     ROLLING_WINDOW_WEEKS = 4
     STD_DEV_BANDS = [2, 3]
     DEFAULT_START_DATE = "2017-01-01"
