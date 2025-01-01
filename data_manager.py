@@ -82,28 +82,47 @@ class FinancialData:
         self.df['BB_Upper'] = self.df['BB_MA'] + (num_std * self.df['BB_STD'])
         self.df['BB_Lower'] = self.df['BB_MA'] - (num_std * self.df['BB_STD'])
 
-# NEW METHOD: Compute weekly consecutive Min/Max, labeled W1, W2, ...
+    # NEW/UPDATED METHOD: Compute avg weekly Min/Max in percentage relative to year open
     def compute_weekly_min_max(self) -> pd.DataFrame:
         """
-        Create a consecutive 'Week' counter from the earliest date in the DataFrame.
-        For each 7-day period, compute the min and max of 'close'.
-        Return columns: ['Week', 'Min', 'Max']
+        1) For each (Year, WeekOfYear), find the min & max closing price.
+        2) Compute each as a % difference from that year's opening price.
+        3) Average those % differences across ALL years for each WeekOfYear (1..52).
+        
+        Returns a DataFrame with columns:
+          [WeekOfYear, AvgMinPercent, AvgMaxPercent]
         """
-        # Ensure DataFrame is sorted by date
-        self.df.sort_index(inplace=True)
-
-        # Create a consecutive week counter since earliest date
-        # (difference in days from the min index, integer-divided by 7) + 1
-        first_date = self.df.index.min()
-        self.df['WeekCounter'] = ((self.df.index - first_date).days // 7) + 1
-
-        # Group by this new consecutive WeekCounter
-        grouped = self.df.groupby('WeekCounter')['close'].agg(['min', 'max']).reset_index()
-
-        # Rename columns to match the chart function
-        grouped.rename(columns={'WeekCounter': 'Week', 'min': 'Min', 'max': 'Max'}, inplace=True)
-
-        # Convert numeric week to label, e.g. "W1", "W2", ...
-        grouped['Week'] = grouped['Week'].apply(lambda x: f'W{x}')
-
-        return grouped
+        df = self.df.copy()
+        
+        # Step 1: Add Year & WeekOfYear columns
+        df['Year'] = df.index.year
+        df['WeekOfYear'] = df.index.isocalendar().week  # 1..53
+        # Force 53rd week to 52 if desired
+        df['WeekOfYear'] = df['WeekOfYear'].apply(lambda w: 52 if w > 52 else w)
+        
+        # Identify each year's opening price (the first trading day in that year)
+        df['DayOfYear'] = df.index.dayofyear
+        idx_earliest = df.groupby('Year')['DayOfYear'].transform('min') == df['DayOfYear']
+        # Build a dict: {year: year_open_close}
+        year_open_dict = df[idx_earliest].set_index('Year')['close'].to_dict()
+        
+        # Step 2: Group by (Year, WeekOfYear) to get weekly min & max
+        grouped = df.groupby(['Year', 'WeekOfYear'])['close'].agg(['min','max']).reset_index()
+        grouped.rename(columns={'min': 'MinPrice', 'max': 'MaxPrice'}, inplace=True)
+        
+        # Attach each group's year_open price
+        grouped['YearOpen'] = grouped['Year'].map(year_open_dict)
+        
+        # Step 3: Compute MinPercent & MaxPercent vs. year open
+        grouped['MinPercent'] = ((grouped['MinPrice'] - grouped['YearOpen']) / grouped['YearOpen']) * 100
+        grouped['MaxPercent'] = ((grouped['MaxPrice'] - grouped['YearOpen']) / grouped['YearOpen']) * 100
+        
+        # Step 4: Average across all years for each WeekOfYear
+        result = grouped.groupby('WeekOfYear')[['MinPercent', 'MaxPercent']].mean().reset_index()
+        result.rename(columns={
+            'MinPercent': 'AvgMinPercent',
+            'MaxPercent': 'AvgMaxPercent'
+        }, inplace=True)
+        
+        # Columns: [WeekOfYear, AvgMinPercent, AvgMaxPercent]
+        return result
