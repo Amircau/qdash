@@ -22,6 +22,24 @@ class FinancialData:
     def __init__(self, ticker: str, start_date: datetime, end_date: datetime):
         self.ticker = ticker
         self.df = self._fetch_data(ticker, start_date, end_date)
+        
+    def add_macd(self, short_window=12, long_window=26, signal_window=9):
+        self.df['MACD'] = self.df['close'].ewm(span=short_window, adjust=False).mean() - \
+                          self.df['close'].ewm(span=long_window, adjust=False).mean()
+        self.df['Signal_Line'] = self.df['MACD'].ewm(span=signal_window, adjust=False).mean()
+        self.df['MACD_Histogram'] = self.df['MACD'] - self.df['Signal_Line'] 
+
+    def add_rsi(self, period=14):
+        delta = self.df['close'].diff()
+        gain = np.where(delta > 0, delta, 0)
+        loss = np.where(delta < 0, -delta, 0)
+
+        avg_gain = pd.Series(gain).rolling(window=period, min_periods=1).mean()
+        avg_loss = pd.Series(loss).rolling(window=period, min_periods=1).mean()
+
+        rs = avg_gain / avg_loss
+        self.df['RSI'] = 100 - (100 / (1 + rs))
+        
 
     @staticmethod
     @st.cache_data  
